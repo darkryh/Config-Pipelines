@@ -1,0 +1,76 @@
+name: Release to Production
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - [branch]
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: [branch]
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          # 7 . 8 . 9 ..... 17 ... last version
+          java-version: 'java-version'
+          # temurin - zulu - adopt or adopt-hotspot - adopt-openj9 - liberica - microsoft - corretto - semeru - oracle - dragonwell - sapmachine - graalvm
+          distribution: 'distribution'
+          # optional if you want to cache
+          cache: gradle
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Get Version from Gradle file
+        id: get_version
+        run: |
+          VERSION=$(sed -n 's/^.*version *= *"\(.*\)".*$/\1/p' NoMoreAdsOnMyWebViewPlayer/build.gradle.kts)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Debug Version
+        run: |
+          echo "Version: ${{ env.VERSION }}"
+
+      - name: Create Tag and Push
+        run: |
+          git fetch --all
+          git checkout master
+          git tag ${{ env.VERSION }}
+          git push origin ${{ env.VERSION }}
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: V${{ env.VERSION }}
+          body: |
+            Automatic Release using Github Actions version ${{ env.VERSION }}
+            - Your custom message
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to JitPack
+        run: ./gradlew publish
