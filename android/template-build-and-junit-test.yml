@@ -1,0 +1,36 @@
+name: [Workflow Name] / Build and Unit Tests
+
+on:
+  push:
+    branches:
+      - [branch]
+  pull_request:
+    branches:
+      - [branch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          # 7 . 8 . 9 ..... 17 ... last version
+          java-version: 'java-version'
+          # temurin - zulu - adopt or adopt-hotspot - adopt-openj9 - liberica - microsoft - corretto - semeru - oracle - dragonwell - sapmachine - graalvm
+          distribution: 'distribution'
+          # optional if you want to cache
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build App
+        run: ./gradlew assemble
+
+      - name: Run Unit Tests
+        run: ./gradlew test
